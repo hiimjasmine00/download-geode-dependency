@@ -25,10 +25,12 @@ runs:
       shell: bash
       run: |
         if [ "$RUNNER_OS" = "macOS" ]; then
-          echo "path=${{ github.workspace }}/cli-profile/Contents/geode/mods" >> $GITHUB_OUTPUT
+          OUTPUT_PATH="${{ github.workspace }}/cli-profile/Contents/geode/mods"
         else
-          echo "path=${{ github.workspace }}/cli-profile/geode/mods" >> $GITHUB_OUTPUT
+          OUTPUT_PATH="${{ github.workspace }}/cli-profile/geode/mods"
         fi
+        echo "Downloading artifacts to $OUTPUT_PATH"
+        echo path="$OUTPUT_PATH" >> $GITHUB_OUTPUT
 
     - name: Find Run ID
       id: runid
