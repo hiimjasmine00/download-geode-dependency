@@ -1,0 +1,72 @@
+name: Download Geode Dependency
+description: Downloads a dependency for projects running Geode SDK, a Geometry Dash modding framework.
+
+inputs:
+  token:
+    description: GitHub token with access to the repository.
+    required: true
+  repository:
+    description: The GitHub repository to download the dependency from.
+    required: true
+  workflow:
+    description: The workflow file in .github/workflows to use. Defaults to the first file running the build-geode-mod action.
+    required: false
+    default: ''
+  branch:
+    description: The branch of the repository to download from. Leave empty for all branches. Defaults to the main branch.
+    required: false
+    default: default
+
+runs:
+  using: composite
+  steps:
+    - name: Get Output Path
+      id: path
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "macOS" ]; then
+          echo "path=${{ github.workspace }}/cli-profile/Contents/geode/mods" >> $GITHUB_OUTPUT
+        else
+          echo "path=${{ github.workspace }}/cli-profile/geode/mods" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Find Run ID
+      id: runid
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.workflow }}" ]; then
+          WORKFLOW=$(grep -lr build-geode-mod ${{ github.workspace }}/.github/workflows | head -n 1 | xargs basename)
+          if [ -z "$WORKFLOW" ]; then
+            echo -e "Error: No workflow found running the geode-sdk/build-geode-mod action"
+            exit 1
+          fi
+        else
+          WORKFLOW=${{ inputs.workflow }}
+        fi
+        if [ "${{ inputs.branch }}" = "default" ]; then
+          BRANCH=$(gh repo view ${{ inputs.repository }} --json defaultBranchRef --jq '.defaultBranchRef.name')
+        else
+          BRANCH="${{ inputs.branch }}"
+        fi
+        if [ -n "$BRANCH" ]; then
+          RUNID=$(gh run list --repo ${{ inputs.repository }} --workflow $WORKFLOW --branch $BRANCH --status completed --json event --json databaseId --jq '.[] | select(.event!="pull_request") | .databaseId' | head -n 1 || true)
+        else
+          RUNID=$(gh run list --repo ${{ inputs.repository }} --workflow $WORKFLOW --status completed --json event --json databaseId --jq '.[] | select(.event!="pull_request") | .databaseId' | head -n 1 || true)
+        fi
+        if [ -z "$RUNID" ]; then
+          echo -e "Error: No runs found"
+          exit 1
+        fi
+
+        echo -e "Run found!' Using run ID $RUNID"
+        echo runid=$RUNID >> $GITHUB_OUTPUT
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Download Build Output
+      uses: actions/download-artifact@v4
+      with:
+        github-token: ${{ inputs.token }}
+        merge-multiple: true
+        path: ${{ steps.path.outputs.path }}
+        run-id: ${{ steps.runid.outputs.runid }}
