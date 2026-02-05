@@ -25,12 +25,10 @@ runs:
       shell: bash
       run: |
         if [ "$RUNNER_OS" = "macOS" ]; then
-          OUTPUT_PATH="${{ github.workspace }}/cli-profile/Contents/geode/mods"
+          echo "path=${{ github.workspace }}/cli-profile/Contents/geode/mods" >> $GITHUB_OUTPUT
         else
-          OUTPUT_PATH="${{ github.workspace }}/cli-profile/geode/mods"
+          echo "path=${{ github.workspace }}/cli-profile/geode/mods" >> $GITHUB_OUTPUT
         fi
-        echo "Downloading artifacts to $OUTPUT_PATH"
-        echo path="$OUTPUT_PATH" >> $GITHUB_OUTPUT
 
     - name: Find Run ID
       id: runid
@@ -73,3 +71,9 @@ runs:
         merge-multiple: true
         path: ${{ steps.path.outputs.path }}
         run-id: ${{ steps.runid.outputs.runid }}
+
+    - name: List files
+      shell: bash
+      run: |
+        echo "Files downloaded to ${{ steps.path.outputs.path }}:"
+        ls -l ${{ steps.path.outputs.path }}
